@@ -375,7 +375,8 @@ multi_eval = calculate_srim_multiperiod(base_equity_val, net_shares, applied_roe
 
 # 0. 최상단 메인 대시보드 제목 (가로 가운데 정렬, #8AB4F8 컬러)
 st.markdown("<h1 style='text-align: center; color: #8AB4F8; font-size: 2.2rem; font-weight: 800; margin-top: -10px; margin-bottom: 8px; letter-spacing: -0.5px;'>Magic S-RIM 가치 평가 모델</h1>", unsafe_allow_html=True)
-st.markdown("<div style='text-align: center; color: #94A3B8; font-size: 0.95rem; margin-bottom: 22px;'>fnGuide 실시간 재무 데이터 기반 적정주가 산출 및 미래 ROE 예측 대시보드</div>", unsafe_allow_html=True)
+st.markdown("<div style='text-align: center; color: #94A3B8; font-size: 0.95rem; margin-bottom: 6px;'>fnGuide 실시간 재무 데이터 기반 적정주가 산출 및 미래 ROE 예측 대시보드</div>", unsafe_allow_html=True)
+st.markdown("<div style='text-align: center; color: #64748B; font-size: 0.82rem; margin-bottom: 22px;'>이 평가 모델은 사경인 회계사가 제공한 엑셀 파일을 토대로 인공지능(AI)의 도움으로 설계했습니다.</div>", unsafe_allow_html=True)
 st.markdown("<hr style='border: 0; height: 1px; background-color: #334155; margin-bottom: 22px;'>", unsafe_allow_html=True)
 
 # 1. 헤더 영역
