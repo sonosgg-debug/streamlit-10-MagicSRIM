@@ -1,0 +1,27 @@
+name: Keep Alive Streamlit
+
+on:
+  schedule:
+    # 매 3일마다 UTC 00:00 (KST 09:00)에 실행
+    - cron: '0 0 */3 * *'
+  workflow_dispatch: # 수동 실행 지원
+
+permissions:
+  contents: write
+
+jobs:
+  keep_alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create empty commit and push
+        run: |
+          git commit --allow-empty -m "chore: keep alive [skip ci]"
+          git push
