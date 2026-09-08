@@ -547,7 +547,7 @@ with chart_cols[1]:
         plot_bgcolor='rgba(0,0,0,0)',
         font={'color': '#F8FAFC'},
         title=dict(
-            text="<b>S-RIM 적정주가 vs 증권사 목표주가 비교</b>",
+            text="<b>S-RIM 적정주가 vs 증권사 목표주가 비교</b><br><span style='font-size:0.82em; color:#94A3B8;'>최근 3개월 발표 증권사 리포트 기준</span>",
             font=dict(color='#F8FAFC', size=15),
             x=0.5,
             xanchor='center',
@@ -683,9 +683,24 @@ with tabs[1]:
 with tabs[2]:
     reports = data.get('consensus_reports', [])
     if reports:
-        st.markdown(f"##### 최근 15개 증권사 리포트 투자의견 및 목표주가 (평균 목표가: **{cons_info.get('target_price_avg', 0):,.0f}원**)")
-        rep_df = pd.DataFrame(reports)
-        rep_df.columns = ["추정기관", "작성일자", "목표주가", "직전 목표주가", "증감율(%)", "투자의견"]
+        count_3m = cons_info.get('analyst_count_3m', 0)
+        avg_3m = cons_info.get('target_price_avg')
+        avg_str = f"{avg_3m:,.0f}원" if avg_3m else "3개월 내 리포트 없음"
+        st.markdown(f"##### 📋 증권사 리포트 투자의견 및 목표주가 (최근 3개월 반영: **{count_3m}건**, 3개월 평균 목표가: **{avg_str}**)")
+        
+        rep_rows = []
+        for r in reports:
+            is_3m = r.get('is_recent_3m', True)
+            rep_rows.append({
+                "추정기관": r.get('broker'),
+                "작성일자": r.get('date'),
+                "목표주가": r.get('target_price'),
+                "직전 목표주가": r.get('prev_price'),
+                "증감율(%)": r.get('change_rate'),
+                "투자의견": r.get('opinion'),
+                "3개월 집계": "🟢 반영" if is_3m else "⚪ 제외 (3개월 초과)"
+            })
+        rep_df = pd.DataFrame(rep_rows)
         st.dataframe(
             rep_df.style.format({
                 "목표주가": lambda v: f"{v:,.0f}원" if pd.notnull(v) and isinstance(v, (int, float)) else "-",

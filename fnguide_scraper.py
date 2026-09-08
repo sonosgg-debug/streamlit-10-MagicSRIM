@@ -7,7 +7,7 @@ import os
 import re
 import json
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import StringIO
 import requests
 import pandas as pd
@@ -505,40 +505,59 @@ def scrape_company_data(ticker):
                 tbody = target_table.find('tbody')
                 rows = tbody.find_all('tr') if tbody else []
                 reports = []
-                target_prices = []
+                target_prices_3m = []
+                now = datetime.now()
+                cutoff_date = now - timedelta(days=92)  # 최근 3개월 기준일
+
                 for row in rows:
                     cells = [td.get_text(strip=True).replace(',', '') for td in row.find_all(['th', 'td'])]
                     if not cells or len(cells) < 3:
                         continue
                     broker = cells[0]
                     if broker in ('Consensus', '평균', 'None', '', 'NaN') or '추정기관' in broker:
-                        val_str = cells[2]
-                        if val_str and val_str != '-':
-                            c_p = clean_num(val_str)
-                            if c_p and not cons_info.get('target_price_avg'):
-                                cons_info['target_price_avg'] = c_p
                         continue
                     date_s = cells[1]
                     target_p = clean_num(cells[2])
                     prev_p = clean_num(cells[3]) if len(cells) > 3 else None
                     change_r = clean_num(cells[4]) if len(cells) > 4 else None
                     opinion = cells[5] if len(cells) > 5 else ''
+
+                    # 3개월 이내 발표 여부 판정
+                    is_recent_3m = False
+                    try:
+                        rep_dt = datetime.strptime(date_s.replace('-', '/').strip(), "%Y/%m/%d")
+                        if rep_dt >= cutoff_date:
+                            is_recent_3m = True
+                    except Exception:
+                        is_recent_3m = False
+
                     if target_p and isinstance(target_p, (int, float)):
-                        target_prices.append(target_p)
+                        if is_recent_3m:
+                            target_prices_3m.append(target_p)
+
                     reports.append({
                         'broker': broker,
                         'date': date_s,
                         'target_price': target_p,
                         'prev_price': prev_p,
                         'change_rate': change_r,
-                        'opinion': opinion
+                        'opinion': opinion,
+                        'is_recent_3m': is_recent_3m
                     })
                 result['consensus_reports'] = reports
-                if target_prices:
-                    cons_info['target_price_high'] = max(target_prices)
-                    cons_info['target_price_low'] = min(target_prices)
-                    if not cons_info.get('target_price_avg'):
-                        cons_info['target_price_avg'] = round(sum(target_prices) / len(target_prices))
+
+                # 최근 3개월 이내 리포트만으로 최고, 최저, 평균 목표주가 산출
+                if target_prices_3m:
+                    cons_info['target_price_high'] = max(target_prices_3m)
+                    cons_info['target_price_low'] = min(target_prices_3m)
+                    cons_info['target_price_avg'] = round(sum(target_prices_3m) / len(target_prices_3m))
+                    cons_info['analyst_count_3m'] = len(target_prices_3m)
+                else:
+                    # 최근 3개월 이내 발표된 리포트가 없는 경우 제외 처리
+                    cons_info['target_price_high'] = None
+                    cons_info['target_price_low'] = None
+                    cons_info['target_price_avg'] = None
+                    cons_info['analyst_count_3m'] = 0
     except Exception as e:
         print(f"Warning fetching consensus details: {e}")
 
