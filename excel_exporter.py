@@ -71,6 +71,65 @@ def write_val(ws, row, col, val):
         return
     cell.value = val
 
+def format_excel_header_date(col_name):
+    """
+    엑셀 템플릿 헤더(B44..I44, B73..I73) 날짜 포맷팅:
+    - 과거 실적('YYYY/MM')은 datetime(YYYY, MM, 1)로 기록하여 Excel의 YEAR, MONTH 수식이 100% 정상 작동하도록 보장
+    - 컨센서스 예상치('YYYY/MM(E)')는 문자열 그대로 기록
+    """
+    col_str = str(col_name).strip()
+    if "(E)" in col_str:
+        return col_str
+    try:
+        parts = col_str.split("/")
+        if len(parts) == 2:
+            return datetime(int(parts[0]), int(parts[1]), 1)
+    except Exception:
+        pass
+    return col_str
+
+# Data 시트의 항목명과 fnGuide getSnpFinancial 항목명 간의 정밀 1:1 매핑 딕셔너리
+FIN_LABEL_MAP = {
+    '매출액': '매출액',
+    '영업이익': '영업이익',
+    '영업이익(발표기준)': '영업이익(발표기준)',
+    '당기순이익': '당기순이익',
+    '지배주주순이익': '당기순이익(지배)',
+    '비지배주주순이익': '당기순이익(비지배)',
+    '자산총계': '자산총계',
+    '부채총계': '부채총계',
+    '자본총계': '자본총계',
+    '지배주주지분': '자본총계(지배)',
+    '비지배주주지분': '자본총계(비지배)',
+    '자본금': '자본금',
+    '부채비율': '부채비율',
+    '유보율': '유보율',
+    '영업이익률': '영업이익률',
+    '지배주주순이익률': '순이익률(지배)',
+    'ROA': 'ROA',
+    'ROE': 'ROE',
+    'EPS': 'EPS',
+    'BPS': 'BPS',
+    'DPS': '현금DPS',
+    'PER': 'PER',
+    'PBR': 'PBR',
+    '발행주식수': '발행주식수(보통주)',
+    '배당수익률': '현금배당수익률'
+}
+
+def match_df_row(label, df):
+    if not label or df is None or df.empty:
+        return None
+    clean_l = str(label).replace('\xa0', '').replace(' ', '').replace('(%)', '').replace('(원)', '').strip()
+    target_key = FIN_LABEL_MAP.get(clean_l, clean_l)
+    if target_key in df.index:
+        return df.loc[target_key]
+    for idx in df.index:
+        clean_idx = str(idx).replace('\xa0', '').replace(' ', '').strip()
+        if clean_l == clean_idx:
+            return df.loc[idx]
+    return None
+
 def generate_srim_excel(scraped_data, form_path="000_Form.xlsx"):
     """
     scraped_data(fnGuide 스크래핑 결과)를 바탕으로
@@ -141,21 +200,12 @@ def generate_srim_excel(scraped_data, form_path="000_Form.xlsx"):
     if df_ann is not None and not df_ann.empty:
         # 헤더 (B44 ~ I44)
         for c_idx, col_name in enumerate(df_ann.columns[:8], start=2):
-            write_val(ws_data, 44, c_idx, str(col_name))
+            write_val(ws_data, 44, c_idx, format_excel_header_date(col_name))
             
         # 값 매핑
         for r_idx in range(45, 70):
             label = ws_data.cell(row=r_idx, column=1).value
-            if not label:
-                continue
-            clean_l = str(label).replace("\xa0", " ").replace(" ", "").strip()
-            # df_ann에서 가장 잘 매칭되는 행 탐색
-            matched_row = None
-            for df_idx in df_ann.index:
-                clean_df_idx = str(df_idx).replace("\xa0", " ").replace(" ", "").strip()
-                if clean_l == clean_df_idx or clean_l in clean_df_idx or clean_df_idx in clean_l:
-                    matched_row = df_ann.loc[df_idx]
-                    break
+            matched_row = match_df_row(label, df_ann)
             if matched_row is not None:
                 for c_idx, col_name in enumerate(df_ann.columns[:8], start=2):
                     val = matched_row.get(col_name)
@@ -165,19 +215,11 @@ def generate_srim_excel(scraped_data, form_path="000_Form.xlsx"):
     df_qtr = scraped_data.get('highlights_quarter')
     if df_qtr is not None and not df_qtr.empty:
         for c_idx, col_name in enumerate(df_qtr.columns[:8], start=2):
-            write_val(ws_data, 73, c_idx, str(col_name))
+            write_val(ws_data, 73, c_idx, format_excel_header_date(col_name))
             
         for r_idx in range(74, 99):
             label = ws_data.cell(row=r_idx, column=1).value
-            if not label:
-                continue
-            clean_l = str(label).replace("\xa0", " ").replace(" ", "").strip()
-            matched_row = None
-            for df_idx in df_qtr.index:
-                clean_df_idx = str(df_idx).replace("\xa0", " ").replace(" ", "").strip()
-                if clean_l == clean_df_idx or clean_l in clean_df_idx or clean_df_idx in clean_l:
-                    matched_row = df_qtr.loc[df_idx]
-                    break
+            matched_row = match_df_row(label, df_qtr)
             if matched_row is not None:
                 for c_idx, col_name in enumerate(df_qtr.columns[:8], start=2):
                     val = matched_row.get(col_name)

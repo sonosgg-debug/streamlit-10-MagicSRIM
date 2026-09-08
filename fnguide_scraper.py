@@ -522,10 +522,14 @@ def scrape_company_data(ticker):
                     change_r = clean_num(cells[4]) if len(cells) > 4 else None
                     opinion = cells[5] if len(cells) > 5 else ''
 
-                    # 3개월 이내 발표 여부 판정
+                    # 3개월 이내 발표 여부 판정 (4자리 및 2자리 연도 포맷 동시 지원)
                     is_recent_3m = False
                     try:
-                        rep_dt = datetime.strptime(date_s.replace('-', '/').strip(), "%Y/%m/%d")
+                        clean_dt = date_s.replace('-', '/').strip()
+                        try:
+                            rep_dt = datetime.strptime(clean_dt, "%Y/%m/%d")
+                        except ValueError:
+                            rep_dt = datetime.strptime(clean_dt, "%y/%m/%d")
                         if rep_dt >= cutoff_date:
                             is_recent_3m = True
                     except Exception:
