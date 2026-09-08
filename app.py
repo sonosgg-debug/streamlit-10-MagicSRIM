@@ -502,7 +502,7 @@ if model_engine == "compare":
 # 4. 시각화 섹션 (밝고 화사한 Plotly 인터랙티브 차트)
 # -------------------------------------------------------------
 st.markdown("<br>", unsafe_allow_html=True)
-st.markdown("#### 📊 주가 밴드 및 가치평가 비교 시각화")
+st.markdown("#### 📊 주가 밴드 및 가치평가 비교 차트")
 
 chart_cols = st.columns([1, 1])
 
