@@ -368,7 +368,7 @@ with m_cols[0]:
     st.metric("현재주가", f"{current_price:,} 원", delta=delta_display)
 
 with m_cols[1]:
-    mkt_cap = info.get('market_cap_common') or 0
+    mkt_cap = info.get('market_cap_common') or info.get('market_cap_total') or 0
     st.metric("시가총액", f"{mkt_cap:,.0f} 억원")
 
 with m_cols[2]:

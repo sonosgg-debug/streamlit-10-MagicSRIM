@@ -14,7 +14,9 @@ import pandas as pd
 from bs4 import BeautifulSoup
 
 HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Referer': 'https://wcomp.fnguide.com/'
 }
 
 COMMON_ALIASES = {
@@ -145,8 +147,68 @@ def resolve_ticker(query, cache_dir="."):
 
     return None, None
 
+def _fetch_naver_stock_info(ticker):
+    """
+    fnGuide 수집 실패 또는 결측 시 Naver Finance API를 통한 실시간 시세/시총 백업 수집
+    """
+    info = {}
+    ticker = str(ticker).strip().zfill(6)
+    try:
+        url_basic = f"https://m.stock.naver.com/api/stock/{ticker}/basic"
+        r = requests.get(url_basic, headers=HEADERS, timeout=5)
+        if r.status_code == 200:
+            b = r.json()
+            p_str = b.get('closePrice')
+            if p_str:
+                info['current_price'] = clean_num(p_str)
+            chg = b.get('compareToPreviousClosePrice')
+            if chg:
+                sign = "+" if b.get('compareToPreviousPrice', {}).get('name') == 'RISING' else "-"
+                info['price_change'] = f"{sign}{clean_num(chg):,}"
+            info['price_change_rate'] = f"{b.get('fluctuationsRatio')}%"
+            if b.get('stockName'):
+                info['company_name'] = b.get('stockName')
+    except Exception as e:
+        print(f"Naver basic fallback error for {ticker}: {e}")
+
+    try:
+        url_integ = f"https://m.stock.naver.com/api/stock/{ticker}/integration"
+        r = requests.get(url_integ, headers=HEADERS, timeout=5)
+        if r.status_code == 200:
+            data = r.json()
+            for item in data.get('totalInfos', []):
+                k = str(item.get('key', '')).strip()
+                v = str(item.get('value', '')).strip()
+                if '시총' in k or '시가총액' in k:
+                    try:
+                        total_eok = 0
+                        if '조' in v:
+                            parts = v.split('조')
+                            jo_val = float(parts[0].replace(',', '').strip())
+                            total_eok += jo_val * 10000
+                            rem = parts[1].replace('억', '').replace(',', '').strip()
+                            if rem:
+                                total_eok += float(rem)
+                        elif '억' in v:
+                            total_eok += float(v.replace('억', '').replace(',', '').strip())
+                        info['market_cap_total'] = round(total_eok)
+                        info['market_cap_common'] = round(total_eok)
+                    except Exception:
+                        pass
+                elif '52주 최고' in k:
+                    info['high_52'] = clean_num(v)
+                elif '52주 최저' in k:
+                    info['low_52'] = clean_num(v)
+                elif 'PER' in k and '추정' not in k:
+                    info['per'] = clean_num(v.replace('배', ''))
+                elif 'PBR' in k:
+                    info['pbr'] = clean_num(v.replace('배', ''))
+    except Exception as e:
+        print(f"Naver integ fallback error for {ticker}: {e}")
+    return info
+
 def _get_div_table(soup, div_id):
-    """특정 div_id 하위의 HTML table 파싱"""
+    """특정 div_id 하위의 HTML table 파싱 (BeautifulSoup 직접 파싱 우선 + pd.read_html 폴백)"""
     div = soup.find('div', id=div_id)
     if not div:
         return None
@@ -154,7 +216,19 @@ def _get_div_table(soup, div_id):
     if not tbl:
         return None
     try:
-        dfs = pd.read_html(StringIO(str(tbl)), flavor='lxml')
+        rows = []
+        for tr in tbl.find_all('tr'):
+            cells = [td.get_text(strip=True).replace('\xa0', ' ') for td in tr.find_all(['th', 'td'])]
+            if cells:
+                rows.append(cells)
+        if rows:
+            max_cols = max(len(r) for r in rows)
+            norm_rows = [r + [''] * (max_cols - len(r)) for r in rows]
+            return pd.DataFrame(norm_rows)
+    except Exception:
+        pass
+    try:
+        dfs = pd.read_html(StringIO(str(tbl)))
         return dfs[0] if dfs else None
     except Exception:
         return None
@@ -273,64 +347,101 @@ def scrape_company_data(ticker):
         info['pbr'] = clean_num(val_ratios.get('h_pbr'))
         info['dividend_yield'] = clean_num(val_ratios.get('h_rate'), is_fraction=True)
 
-    # 시세 현황 (div1)
-    t1 = _get_div_table(soup, 'div1')
-    if t1 is not None:
-        price_val = _find_val_next_to(t1, "종가/ 전일대비/수익률") or _find_val_next_to(t1, "종가/ 전일대비/ 수익률")
-        if price_val and "/" in str(price_val):
-            parts = str(price_val).split("/")
-            info['current_price'] = clean_num(parts[0].strip())
-            info['price_change'] = parts[1].strip() if len(parts) >= 2 else ""
-            info['price_change_rate'] = parts[2].strip() if len(parts) >= 3 else ""
-        else:
-            info['current_price'] = clean_num(price_val)
+    # 시세 현황 (div1) - BeautifulSoup 직접 파싱
+    div1 = soup.find('div', id='div1')
+    if div1:
+        tbl1 = div1.find('table')
+        if tbl1:
+            d1 = {}
+            for tr in tbl1.find_all('tr'):
+                cells = [c.get_text(strip=True).replace('\xa0', ' ') for c in tr.find_all(['th', 'td'])]
+                for i in range(0, len(cells) - 1, 2):
+                    k = cells[i].strip()
+                    v = cells[i+1].strip()
+                    if k:
+                        d1[k] = v
 
-        hl_val = _find_val_next_to(t1, "52주.최고가/ 최저가") or _find_val_next_to(t1, "52주 최고가/ 최저가")
-        if hl_val and "/" in str(hl_val):
-            hl_parts = str(hl_val).split("/")
-            info['high_52'] = clean_num(hl_parts[0])
-            info['low_52'] = clean_num(hl_parts[1])
-        else:
-            info['high_52'] = None
-            info['low_52'] = None
+            for k, v in d1.items():
+                if "종가" in k and "수익률" in k:
+                    parts = str(v).split("/")
+                    info['current_price'] = clean_num(parts[0].strip())
+                    info['price_change'] = parts[1].strip() if len(parts) >= 2 else ""
+                    info['price_change_rate'] = parts[2].strip() if len(parts) >= 3 else ""
+                elif "52주" in k and ("최고" in k or "최저" in k):
+                    hl_parts = str(v).split("/")
+                    info['high_52'] = clean_num(hl_parts[0]) if len(hl_parts) >= 1 else None
+                    info['low_52'] = clean_num(hl_parts[1]) if len(hl_parts) >= 2 else None
+                elif "시가총액" in k and "상장예정" in k:
+                    info['market_cap_total'] = clean_num(v)
+                elif "시가총액" in k and "보통주" in k:
+                    info['market_cap_common'] = clean_num(v)
+                elif "발행주식수" in k:
+                    s_parts = str(v).split("/")
+                    info['shares_common'] = clean_num(s_parts[0]) or 0
+                    info['shares_pref'] = clean_num(s_parts[1]) if len(s_parts) > 1 else 0
+                    info['shares_total'] = info['shares_common'] + info['shares_pref']
+                elif "베타" in k:
+                    info['beta'] = clean_num(v)
 
-        info['market_cap_total'] = clean_num(_find_val_next_to(t1, "시가총액 (상장예정포함,억원)")) or clean_num(_find_val_next_to(t1, "시가총액(상장예정포함,억원)"))
-        info['market_cap_common'] = clean_num(_find_val_next_to(t1, "시가총액 (보통주,억원)")) or clean_num(_find_val_next_to(t1, "시가총액(보통주,억원)"))
+    # 시가총액 보통주/전체 상호 보완
+    if not info.get('market_cap_common') and info.get('market_cap_total'):
+        info['market_cap_common'] = info['market_cap_total']
+    if not info.get('market_cap_total') and info.get('market_cap_common'):
+        info['market_cap_total'] = info['market_cap_common']
 
-        shares_str = _find_val_next_to(t1, "발행주식수(보통주/ 우선주)")
-        if shares_str and "/" in str(shares_str):
-            s_parts = str(shares_str).split("/")
-            info['shares_common'] = clean_num(s_parts[0]) or 0
-            info['shares_pref'] = clean_num(s_parts[1]) or 0
-        else:
-            info['shares_common'] = clean_num(shares_str) or 0
-            info['shares_pref'] = 0
-            
-        info['shares_total'] = info['shares_common'] + info['shares_pref']
-        info['beta'] = clean_num(_find_val_next_to(t1, "베타"))
-
-    # 주주현황 - 자기주식 수량 (div4)
-    t4 = _get_div_table(soup, 'div4')
+    # 주주현황 - 자기주식 수량 (div4) - BeautifulSoup 직접 파싱
     treasury_val = 0
-    if t4 is not None:
-        for _, row in t4.iterrows():
-            label = str(row.iloc[0])
-            if "자사주" in label or "자기주식" in label:
-                treasury_val = clean_num(row.iloc[1]) or 0
-                break
+    div4 = soup.find('div', id='div4')
+    if div4:
+        tbl4 = div4.find('table')
+        if tbl4:
+            for tr in tbl4.find_all('tr'):
+                cells = [td.get_text(strip=True).replace('\xa0', ' ') for td in tr.find_all(['th', 'td'])]
+                if len(cells) >= 2:
+                    label = cells[0]
+                    if "자사주" in label or "자기주식" in label:
+                        treasury_val = clean_num(cells[1]) or 0
+                        break
     info['shares_treasury'] = treasury_val
+
+    # Naver Finance 백업 폴백 (fnGuide 시세 결측 또는 클라우드 환경 대응)
+    if not info.get('current_price') or not info.get('market_cap_total'):
+        n_info = _fetch_naver_stock_info(ticker)
+        for nk, nv in n_info.items():
+            if (info.get(nk) is None or info.get(nk) == 0) and nv is not None:
+                info[nk] = nv
+        if not result['company_name'] and n_info.get('company_name'):
+            result['company_name'] = n_info['company_name']
+
+    # 주식수 최종 보정
+    if (not info.get('shares_total') or info.get('shares_total') == 0) and info.get('current_price') and info.get('market_cap_total'):
+        info['shares_total'] = round((info['market_cap_total'] * 100_000_000) / info['current_price'])
+        info['shares_common'] = info['shares_total']
+
     info['shares_net'] = max(0, info.get('shares_total', 0) - treasury_val)
+    if info.get('shares_net', 0) == 0 and info.get('shares_total', 0) > 0:
+        info['shares_net'] = info['shares_total']
     result['info'] = info
 
-    # 투자의견 컨센서스 (div6)
-    t6 = _get_div_table(soup, 'div6')
+    # 투자의견 컨센서스 (div6) - BeautifulSoup 직접 파싱
     cons_info = {}
-    if t6 is not None and not t6.empty:
-        cons_info['opinion_score'] = clean_num(t6.iloc[0].get('투자의견'))
-        cons_info['target_price_avg'] = clean_num(t6.iloc[0].get('목표주가'))
-        cons_info['eps'] = clean_num(t6.iloc[0].get('EPS'))
-        cons_info['per'] = clean_num(t6.iloc[0].get('PER'))
-        cons_info['analyst_count'] = clean_num(t6.iloc[0].get('추정기관수'))
+    div6 = soup.find('div', id='div6')
+    if div6:
+        tbl6 = div6.find('table')
+        if tbl6:
+            ths = [th.get_text(strip=True) for th in tbl6.find_all('th')]
+            tds = [td.get_text(strip=True) for td in tbl6.find_all('td')]
+            for h, d in zip(ths, tds):
+                if '투자의견' in h:
+                    cons_info['opinion_score'] = clean_num(d)
+                elif '목표주가' in h:
+                    cons_info['target_price_avg'] = clean_num(d)
+                elif 'EPS' in h:
+                    cons_info['eps'] = clean_num(d)
+                elif 'PER' in h:
+                    cons_info['per'] = clean_num(d)
+                elif '추정기관' in h:
+                    cons_info['analyst_count'] = clean_num(d)
 
     # 업종비교 snpSector JSON
     html_text = res.text
@@ -376,47 +487,58 @@ def scrape_company_data(ticker):
         result['is_consolidated'] = False
 
     # ============================================================
-    # 3. Consensus 상세 페이지 스크래핑
+    # 3. Consensus 상세 페이지 스크래핑 (BeautifulSoup 직접 파싱)
     # ============================================================
     cons_url = f"https://wcomp.fnguide.com/CompanyInfo/Consensus?cmp_cd={ticker}"
     try:
         res_c = requests.get(cons_url, headers=HEADERS, timeout=10)
         if res_c.status_code == 200:
             soup_c = BeautifulSoup(res_c.text, 'html.parser')
+            target_table = None
             for tbl in soup_c.find_all('table'):
-                tbl_text = tbl.get_text()
-                if '적정주가' in tbl_text and '추정기관' in tbl_text:
-                    c_dfs = pd.read_html(StringIO(str(tbl)), flavor='lxml')
-                    if c_dfs:
-                        c_df = c_dfs[0]
-                        reports = []
-                        target_prices = []
-                        for _, row in c_df.iterrows():
-                            broker = str(row.iloc[0]).strip()
-                            if broker in ('Consensus', '평균', 'None', '', 'NaN') or '추정기관' in broker:
-                                continue
-                            date_s = str(row.iloc[1]).strip()
-                            target_p = clean_num(row.iloc[2])
-                            prev_p = clean_num(row.iloc[3]) if len(row) > 3 else None
-                            change_r = clean_num(row.iloc[4]) if len(row) > 4 else None
-                            opinion = str(row.iloc[5]).strip() if len(row) > 5 else ''
-                            if target_p and isinstance(target_p, (int, float)):
-                                target_prices.append(target_p)
-                            reports.append({
-                                'broker': broker,
-                                'date': date_s,
-                                'target_price': target_p,
-                                'prev_price': prev_p,
-                                'change_rate': change_r,
-                                'opinion': opinion
-                            })
-                        result['consensus_reports'] = reports
-                        if target_prices:
-                            cons_info['target_price_high'] = max(target_prices)
-                            cons_info['target_price_low'] = min(target_prices)
-                            if not cons_info.get('target_price_avg'):
-                                cons_info['target_price_avg'] = round(sum(target_prices) / len(target_prices))
+                cap = tbl.find('caption')
+                tbl_txt = tbl.get_text()
+                if (cap and '증권사별' in cap.get_text()) or ('적정주가' in tbl_txt and '추정기관' in tbl_txt):
+                    target_table = tbl
                     break
+            if target_table:
+                tbody = target_table.find('tbody')
+                rows = tbody.find_all('tr') if tbody else []
+                reports = []
+                target_prices = []
+                for row in rows:
+                    cells = [td.get_text(strip=True).replace(',', '') for td in row.find_all(['th', 'td'])]
+                    if not cells or len(cells) < 3:
+                        continue
+                    broker = cells[0]
+                    if broker in ('Consensus', '평균', 'None', '', 'NaN') or '추정기관' in broker:
+                        val_str = cells[2]
+                        if val_str and val_str != '-':
+                            c_p = clean_num(val_str)
+                            if c_p and not cons_info.get('target_price_avg'):
+                                cons_info['target_price_avg'] = c_p
+                        continue
+                    date_s = cells[1]
+                    target_p = clean_num(cells[2])
+                    prev_p = clean_num(cells[3]) if len(cells) > 3 else None
+                    change_r = clean_num(cells[4]) if len(cells) > 4 else None
+                    opinion = cells[5] if len(cells) > 5 else ''
+                    if target_p and isinstance(target_p, (int, float)):
+                        target_prices.append(target_p)
+                    reports.append({
+                        'broker': broker,
+                        'date': date_s,
+                        'target_price': target_p,
+                        'prev_price': prev_p,
+                        'change_rate': change_r,
+                        'opinion': opinion
+                    })
+                result['consensus_reports'] = reports
+                if target_prices:
+                    cons_info['target_price_high'] = max(target_prices)
+                    cons_info['target_price_low'] = min(target_prices)
+                    if not cons_info.get('target_price_avg'):
+                        cons_info['target_price_avg'] = round(sum(target_prices) / len(target_prices))
     except Exception as e:
         print(f"Warning fetching consensus details: {e}")
 
