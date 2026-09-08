@@ -490,11 +490,7 @@ with chart_cols[0]:
     fig_gauge = go.Figure(go.Indicator(
         mode="gauge+number+delta",
         value=current_price,
-        domain={'x': [0.02, 0.98], 'y': [0.0, 0.96]},
-        title={
-            'text': "<b>현재주가 위치 vs S-RIM 밸류에이션 밴드</b><br><span style='font-size:0.82em; color:#94A3B8;'>🟢 매수권장가 | 🟡 기준적정가 | 🔴 매도목표가</span>",
-            'font': {'color': '#F8FAFC', 'size': 15}
-        },
+        domain={'x': [0.02, 0.98], 'y': [0.0, 0.92]},
         number={'suffix': " 원", 'font': {'size': 26, 'color': '#FFFFFF'}, 'valueformat': ',d'},
         delta={
             'reference': fair_price,
@@ -526,6 +522,13 @@ with chart_cols[0]:
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         font={'color': '#F8FAFC'},
+        title=dict(
+            text="<b>현재주가 위치 vs S-RIM 밸류에이션 밴드</b><br><span style='font-size:0.82em; color:#94A3B8;'>🟢 매수권장가 | 🟡 기준적정가 | 🔴 매도목표가</span>",
+            font=dict(color='#F8FAFC', size=15),
+            x=0.5,
+            xanchor='center',
+            y=0.90
+        ),
         height=410,
         margin=dict(l=20, r=20, t=75, b=25)
     )
