@@ -259,12 +259,12 @@ with st.sidebar:
             "평가 공식 선택",
             options=["standard", "multiperiod", "compare"],
             format_func=lambda x: {
-                "standard": "사경인 정통 S-RIM (업계 표준 공식)",
-                "multiperiod": "10개년 다기간 모델 (응용판)",
+                "standard": "사경인 정통 S-RIM (표준 모델)",
+                "multiperiod": "향후 10년 예측 적용 (응용 모델)",
                 "compare": "두 모델 동시 비교 (Dual Comparison)"
             }[x],
             index=0,
-            help="사경인 표준 모델은 최신 자본총계 기반 공식이며, 10개년 모델은 엑셀의 장기 예측 시뮬레이션 방식입니다."
+            help="사경인 표준 모델은 최신 자본총계 기반 공식이며, 10개년 모델은 장기 예측 시뮬레이션 방식입니다."
         )
 
 # -------------------------------------------------------------
@@ -431,7 +431,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 
 # 3. 핵심 적정주가 결과 섹션 (그레이 톤 다크 모드 카드)
 chosen_eval = std_eval if model_engine == "standard" else multi_eval
-engine_label = "사경인 정통 S-RIM" if model_engine == "standard" else "10개년 다기간 모델 (응용판)"
+engine_label = "사경인 정통 S-RIM (표준 모델)" if model_engine == "standard" else "향후 10년 예측 적용 (응용 모델)"
 
 st.markdown(f"### 🎯 S-RIM 적정주가 평가 결과 <span style='font-size:1rem; color:#94A3B8;'>[{engine_label}]</span>", unsafe_allow_html=True)
 
@@ -484,12 +484,12 @@ with card_cols[2]:
 # 듀얼 비교 모드일 경우 비교 테이블 노출
 if model_engine == "compare":
     st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("##### ⚖️ 두 모델(정통 S-RIM vs 10개년 다기간 모델) 비교 표")
+    st.markdown("##### ⚖️ 두 모델(표준 모델 vs 응용 모델) 비교 표")
     cmp_df = pd.DataFrame({
         "구분": ["매수 권장가 (20% 감소)", "기준 적정가 (10% 감소)", "매도 목표가 (지속)"],
-        "사경인 정통 S-RIM": [f"{std_eval['target_buy']:,} 원", f"{std_eval['target_fair']:,} 원", f"{std_eval['target_sell']:,} 원"],
-        "10개년 다기간 모델 (응용판)": [f"{multi_eval['target_buy']:,} 원", f"{multi_eval['target_fair']:,} 원", f"{multi_eval['target_sell']:,} 원"],
-        "차이율 (10개년/정통)": [
+        "사경인 정통 S-RIM (표준 모델)": [f"{std_eval['target_buy']:,} 원", f"{std_eval['target_fair']:,} 원", f"{std_eval['target_sell']:,} 원"],
+        "향후 10년 예측 적용 (응용 모델)": [f"{multi_eval['target_buy']:,} 원", f"{multi_eval['target_fair']:,} 원", f"{multi_eval['target_sell']:,} 원"],
+        "차이율 (응용/표준)": [
             f"{(multi_eval['target_buy']/std_eval['target_buy'] - 1)*100:+.1f}%" if std_eval['target_buy']>0 else "-",
             f"{(multi_eval['target_fair']/std_eval['target_fair'] - 1)*100:+.1f}%" if std_eval['target_fair']>0 else "-",
             f"{(multi_eval['target_sell']/std_eval['target_sell'] - 1)*100:+.1f}%" if std_eval['target_sell']>0 else "-"
