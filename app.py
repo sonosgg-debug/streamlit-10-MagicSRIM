@@ -94,6 +94,27 @@ st.markdown("""
     .sell-color { color: #F87171 !important; }  /* 밝은 코랄 레드 */
     .blue-color { color: #38BDF8 !important; }  /* 일렉트릭 스카이블루 */
     
+    /* 기업 시세 및 가치평가 요약 st.metric 숫자 폰트 크기 대폭 축소 및 다크 카드화 */
+    [data-testid="stMetricValue"], [data-testid="stMetricValue"] * {
+        font-size: 1.1rem !important;
+        font-weight: 700 !important;
+        white-space: nowrap !important;
+        overflow: visible !important;
+    }
+    [data-testid="stMetricLabel"], [data-testid="stMetricLabel"] * {
+        font-size: 0.82rem !important;
+        color: #94A3B8 !important;
+    }
+    [data-testid="stMetricDelta"], [data-testid="stMetricDelta"] * {
+        font-size: 0.75rem !important;
+    }
+    div[data-testid="stMetric"] {
+        background-color: #1E293B;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 10px 12px;
+    }
+
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
     }
@@ -469,7 +490,7 @@ with chart_cols[0]:
     fig_gauge = go.Figure(go.Indicator(
         mode="gauge+number+delta",
         value=current_price,
-        domain={'x': [0.02, 0.98], 'y': [0.0, 0.88]},
+        domain={'x': [0.02, 0.98], 'y': [0.0, 0.96]},
         title={
             'text': "<b>현재주가 위치 vs S-RIM 밸류에이션 밴드</b><br><span style='font-size:0.82em; color:#94A3B8;'>🟢 매수권장가 | 🟡 기준적정가 | 🔴 매도목표가</span>",
             'font': {'color': '#F8FAFC', 'size': 15}
