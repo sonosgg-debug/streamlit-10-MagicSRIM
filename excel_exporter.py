@@ -136,7 +136,12 @@ def generate_srim_excel(scraped_data, form_path="000_Form.xlsx"):
     수식과 서식이 온전히 보존된 .xlsx 바이트 데이터를 생성
     """
     if not os.path.exists(form_path):
-        raise FileNotFoundError(f"템플릿 파일이 존재하지 않습니다: {form_path}")
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        cand = os.path.join(base_dir, "000_Form.xlsx")
+        if os.path.exists(cand):
+            form_path = cand
+        else:
+            raise FileNotFoundError(f"템플릿 파일이 존재하지 않습니다: {form_path}")
 
     wb = openpyxl.load_workbook(form_path, data_only=False)
     patch_template_formulas(wb)
