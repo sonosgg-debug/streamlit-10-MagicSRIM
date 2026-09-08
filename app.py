@@ -293,19 +293,40 @@ roe_candidates = extract_roe_candidates(highlights_ann, highlights_qtr)
 
 with st.sidebar:
     with st.expander("🎯 미래 ROE 추정 모드", expanded=True):
-        roe_options = list(roe_candidates.keys()) + ["custom"]
+        # 전문가 권장 순위대로 옵션 정렬
+        pref_order = ['cons_avg', 'cons_1y', 'cons_terminal', 'weighted_hist', 'ltm_qtr']
+        ordered_keys = [k for k in pref_order if k in roe_candidates]
+        for k in roe_candidates:
+            if k not in ordered_keys:
+                ordered_keys.append(k)
+        roe_options = ordered_keys + ["custom"]
         
         def format_roe_opt(k):
             if k == "custom":
-                return "✏️ 사용자 직접 입력 (%)"
+                return "✏️ [직접설정] 사용자 직접 입력 (%)"
             cand = roe_candidates.get(k, {})
-            return f"{cand.get('name')} ({cand.get('value', 0)*100:.2f}%)"
+            name = cand.get('name', '')
+            val = cand.get('value', 0) * 100
+            prefix = ""
+            if k == "cons_avg":
+                prefix = "⭐ [1순위 권장] "
+            elif k == "cons_1y":
+                prefix = "🥈 [2순위] "
+            elif k == "cons_terminal":
+                prefix = "🥉 [3순위] "
+            elif k == "weighted_hist":
+                prefix = "🛡️ [4순위/컨센부재시 1순위] "
+            elif k == "ltm_qtr":
+                prefix = "⚡ [5순위/최신실적] "
+            return f"{prefix}{name} ({val:.2f}%)"
 
         default_roe_idx = 0
-        if "cons_1y" in roe_options:
-            default_roe_idx = roe_options.index("cons_1y")
+        if "cons_avg" in roe_options:
+            default_roe_idx = roe_options.index("cons_avg")
         elif "weighted_hist" in roe_options:
             default_roe_idx = roe_options.index("weighted_hist")
+        elif "cons_1y" in roe_options:
+            default_roe_idx = roe_options.index("cons_1y")
 
         selected_roe_key = st.selectbox(
             "적용할 ROE 기준",

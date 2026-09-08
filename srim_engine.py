@@ -27,9 +27,9 @@ def calculate_required_return(mode="fixed", fixed_rate=0.125, beta=1.0, rf=0.035
 
 def extract_roe_candidates(highlights_annual, highlights_quarter):
     """
-    재무제표 데이터로부터 다양한 관점의 미래 ROE 후보들을 계산하여 반환
+    재무제표 데이터로부터 다양한 관점의 미래 ROE 후보들을 계산하여 전문가 권장 우선순위대로 반환
     """
-    candidates = {}
+    raw_cand = {}
     
     # 1. 연간 ROE 행 추출
     if highlights_annual is not None and not highlights_annual.empty:
@@ -41,64 +41,101 @@ def extract_roe_candidates(highlights_annual, highlights_quarter):
                 
         if roe_row is not None:
             # 과거 실적 연도와 컨센서스(E) 연도 구분
-            hist_cols = [c for c in roe_row.index if "(E)" not in str(c)]
-            cons_cols = [c for c in roe_row.index if "(E)" in str(c)]
+            hist_cols = [c for c in roe_row.index if "(E)" not in str(c) and str(c).strip()]
+            cons_cols = [c for c in roe_row.index if "(E)" in str(c) and str(c).strip()]
             
-            # 컨센서스 1년차
+            # [1순위 권장] 향후 3개년 평균 컨센서스
+            valid_cons = [float(roe_row[c]) / 100.0 for c in cons_cols if roe_row[c] is not None and not pd.isna(roe_row[c])]
+            if valid_cons:
+                raw_cand['cons_avg'] = {
+                    'name': f"향후 3개년 평균 컨센서스 ({len(valid_cons)}개년 평균)",
+                    'value': sum(valid_cons) / len(valid_cons)
+                }
+
+            # [2순위] 당해년도(1년차) 컨센서스
             if cons_cols:
                 v1 = roe_row[cons_cols[0]]
                 if v1 is not None and not pd.isna(v1):
-                    candidates['cons_1y'] = {'name': f"컨센서스 1년차 ({cons_cols[0]})", 'value': float(v1) / 100.0}
-                    
-            # 컨센서스 3개년 평균
-            valid_cons = [float(roe_row[c]) / 100.0 for c in cons_cols if roe_row[c] is not None and not pd.isna(roe_row[c])]
-            if valid_cons:
-                candidates['cons_avg'] = {'name': f"컨센서스 {len(valid_cons)}개년 평균", 'value': sum(valid_cons) / len(valid_cons)}
+                    raw_cand['cons_1y'] = {
+                        'name': f"당해년도(1년차) 컨센서스 ({cons_cols[0]})",
+                        'value': float(v1) / 100.0
+                    }
 
-            # 컨센서스 최종년도 (기존 엑셀 방식)
+            # [3순위] 컨센서스 최종년도 (기존 엑셀 방식)
             if cons_cols:
                 v_last = roe_row[cons_cols[-1]]
                 if v_last is not None and not pd.isna(v_last):
-                    candidates['cons_terminal'] = {'name': f"컨센서스 최종년도 ({cons_cols[-1]})", 'value': float(v_last) / 100.0}
+                    raw_cand['cons_terminal'] = {
+                        'name': f"최종년도({len(cons_cols)}년차) 컨센서스 ({cons_cols[-1]})",
+                        'value': float(v_last) / 100.0
+                    }
 
-            # 과거 실적 가중평균 (최근 3개년 3:2:1 가중치)
+            # [4순위 / 컨센서스 부재시 1순위] 과거 실적 가중평균 (최근 3개년 3:2:1 가중치)
             valid_hist = [float(roe_row[c]) / 100.0 for c in hist_cols if roe_row[c] is not None and not pd.isna(roe_row[c])]
             if len(valid_hist) >= 3:
-                # 최근 3개년: 마지막 3개
+                # 최근 3개년: 마지막 3개 (최근 순 3:2:1 가중치)
                 y3, y2, y1 = valid_hist[-1], valid_hist[-2], valid_hist[-3]
                 weighted = (y3 * 3 + y2 * 2 + y1 * 1) / 6.0
-                candidates['weighted_hist'] = {'name': "과거 3개년 가중평균 (3:2:1)", 'value': weighted}
+                raw_cand['weighted_hist'] = {'name': "과거 3개년 가중평균 (3:2:1)", 'value': weighted}
             elif len(valid_hist) == 2:
                 weighted = (valid_hist[-1] * 2 + valid_hist[-2] * 1) / 3.0
-                candidates['weighted_hist'] = {'name': "과거 2개년 가중평균 (2:1)", 'value': weighted}
+                raw_cand['weighted_hist'] = {'name': "과거 2개년 가중평균 (2:1)", 'value': weighted}
             elif len(valid_hist) == 1:
-                candidates['weighted_hist'] = {'name': "최근 1개년 결산 ROE", 'value': valid_hist[0]}
+                raw_cand['weighted_hist'] = {'name': f"최근 1개년 결산 ROE ({hist_cols[-1]})", 'value': valid_hist[0]}
 
-    # 2. 최근 4분기 합산(LTM) ROE 계산
+    # 2. [5순위] 최근 4분기 합산(LTM) ROE 계산 (동적 4개 분기 자동 추적)
     if highlights_quarter is not None and not highlights_quarter.empty:
-        # 지배주주순이익 및 지배주주지분 행 찾기
-        ni_row = None
-        eq_row = None
-        for idx in highlights_quarter.index:
-            idx_str = str(idx).replace(" ", "")
-            if "지배" in idx_str and "순이익" in idx_str:
-                ni_row = highlights_quarter.loc[idx]
-            elif "지배" in idx_str and "지분" in idx_str or ("자본총계(지배)" in idx_str):
-                eq_row = highlights_quarter.loc[idx]
-                
-        if ni_row is not None and eq_row is not None:
-            # 최근 4분기 실적(E가 아닌 분기)
-            q_cols = [c for c in ni_row.index if "(E)" not in str(c)]
-            if len(q_cols) >= 4:
-                recent_4q = q_cols[-4:]
+        # (E)가 붙지 않은 실제 확정/잠정 실적 분기 칼럼만 동적으로 추출 (오름차순)
+        q_cols = [c for c in highlights_quarter.columns if "(E)" not in str(c) and str(c).strip()]
+        if len(q_cols) >= 4:
+            recent_4q = q_cols[-4:]  # 가장 최신 4개 분기 (예: 2025/09 ~ 2026/06)
+            
+            # (방법 1) FnGuide 공식 산출 분기 ROE 행의 최신 분기값 확인
+            fng_roe = None
+            if "ROE" in highlights_quarter.index:
+                last_col = recent_4q[-1]
+                val = highlights_quarter.loc["ROE"].get(last_col)
+                if val is not None and not pd.isna(val):
+                    try:
+                        fng_roe = float(val) / 100.0
+                    except Exception:
+                        pass
+
+            # (방법 2) 지배주주순이익 4분기 합산 / 평균 지배주주지분 직접 계산
+            calc_roe = None
+            ni_row = None
+            for k in ["당기순이익(지배)", "당기순이익"]:
+                if k in highlights_quarter.index:
+                    ni_row = highlights_quarter.loc[k]
+                    break
+            eq_row = None
+            for k in ["자본총계(지배)", "자본총계"]:
+                if k in highlights_quarter.index:
+                    eq_row = highlights_quarter.loc[k]
+                    break
+
+            if ni_row is not None and eq_row is not None:
                 try:
-                    sum_ni = sum([float(ni_row[c]) for c in recent_4q if ni_row[c] is not None and not pd.isna(ni_row[c])])
-                    avg_eq = sum([float(eq_row[c]) for c in recent_4q if eq_row[c] is not None and not pd.isna(eq_row[c])]) / 4.0
-                    if avg_eq > 0:
-                        ltm_roe = sum_ni / avg_eq
-                        candidates['ltm_4q'] = {'name': f"최근 4분기 합산 ROE ({recent_4q[0]}~{recent_4q[-1]})", 'value': ltm_roe}
+                    s_ni = sum([float(ni_row[c]) for c in recent_4q if c in ni_row and not pd.isna(ni_row[c])])
+                    a_eq = sum([float(eq_row[c]) for c in recent_4q if c in eq_row and not pd.isna(eq_row[c])]) / 4.0
+                    if a_eq > 0:
+                        calc_roe = s_ni / a_eq
                 except Exception:
                     pass
+
+            final_ltm = fng_roe if fng_roe is not None else calc_roe
+            if final_ltm is not None:
+                raw_cand['ltm_qtr'] = {
+                    'name': f"최근 4분기 합산(LTM) ROE ({recent_4q[0]}~{recent_4q[-1]})",
+                    'value': final_ltm
+                }
+
+    # 전문가 권장 순위대로 정렬하여 반환
+    pref_order = ['cons_avg', 'cons_1y', 'cons_terminal', 'weighted_hist', 'ltm_qtr']
+    candidates = {k: raw_cand[k] for k in pref_order if k in raw_cand}
+    for k in raw_cand:
+        if k not in candidates:
+            candidates[k] = raw_cand[k]
 
     return candidates
 
