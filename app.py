@@ -25,8 +25,11 @@ from srim_engine import (
 from excel_exporter import generate_srim_excel
 
 # 페이지 설정
+FAVICON_PATH = os.path.join(os.path.dirname(__file__), "favicon.png")
+
 st.set_page_config(
     page_title="Magic S-RIM 가치평가 대시보드",
+    page_icon=FAVICON_PATH if os.path.exists(FAVICON_PATH) else None,
     layout="wide",
     initial_sidebar_state="expanded"
 )
