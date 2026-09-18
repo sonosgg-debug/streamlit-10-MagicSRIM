@@ -285,8 +285,8 @@ with st.sidebar:
                     st.session_state.scraped_data = None
                     st.rerun()
 
-    # 빠른 대표 종목 바로가기 버튼
-    st.markdown("<small style='color:#94A3B8;'>주요 대표 종목 바로가기</small>", unsafe_allow_html=True)
+    # 시총 상위주 바로가기 버튼
+    st.markdown("<small style='color:#94A3B8;'>시총 상위주 바로가기</small>", unsafe_allow_html=True)
     quick_cols = st.columns(3)
     quick_picks = [
         ("삼성전자", "005930"),
@@ -294,7 +294,10 @@ with st.sidebar:
         ("SK스퀘어", "402340"),
         ("삼성전기", "009150"),
         ("LG에너지솔루션", "373220"),
-        ("현대차", "005380")
+        ("현대차", "005380"),
+        ("알테오젠", "196170"),
+        ("에코프로비엠", "247540"),
+        ("주성엔지니어링", "036930")
     ]
     for idx, (q_name, q_code) in enumerate(quick_picks):
         with quick_cols[idx % 3]:
