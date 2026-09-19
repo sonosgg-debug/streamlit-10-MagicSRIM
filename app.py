@@ -483,7 +483,7 @@ with col_header_btn:
         excel_bytes = generate_srim_excel(data, form_path="000_Form.xlsx")
         filename = f"{data.get('ticker')}_SRIM_{datetime.now().strftime('%Y%m%d')}.xlsx"
         st.download_button(
-            label="📥 엑셀 파일 다운로드 (.xlsx)",
+            label="📥 엑셀 파일 다운로드",
             data=excel_bytes,
             file_name=filename,
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
