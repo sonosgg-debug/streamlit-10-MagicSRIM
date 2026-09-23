@@ -312,6 +312,21 @@ if 'scraped_data' not in st.session_state:
 # 사이드바 (컨트롤 패널 - 32 FinancialChart 방식 종목 선택)
 # -------------------------------------------------------------
 with st.sidebar:
+    st.markdown(
+        """
+        <div style='padding: 2px 0 14px 0;'>
+            <div style='font-size: 1.25rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px;'>
+                <span>⚙️</span> 가치평가 설정
+            </div>
+            <div style='font-size: 0.82rem; color: #94a3b8; margin-top: 4px;'>
+                S-RIM 모델 기반 적정주가 산출을 위한 종목과 파라미터를 설정합니다.
+            </div>
+        </div>
+        <hr style='border: 0; height: 1px; background-color: #334155; margin: 12px 0 16px 0;'>
+        """,
+        unsafe_allow_html=True
+    )
+
     st.subheader("🔍 종목 선택")
 
     tickers_df = load_stock_tickers()
@@ -328,7 +343,18 @@ with st.sidebar:
                 index=default_index,
                 help="키보드로 종목명(예: 삼성전자) 또는 종목코드(예: 005930)를 입력하여 검색 및 선택할 수 있습니다."
             )
-            submitted = st.form_submit_button("🔍 조회", use_container_width=True, type="primary")
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+                btn_update = st.form_submit_button("🔄 Update", use_container_width=True, help="캐시를 초기화하고 최신 FnGuide 재무 데이터를 다시 스크래핑합니다.")
+            with col_btn2:
+                submitted = st.form_submit_button("🔍 조회", use_container_width=True, type="primary", help="선택한 종목으로 대시보드를 새로고침합니다.")
+
+            if btn_update and selected_display:
+                st.cache_data.clear()
+                code_from_display = selected_display.split("(")[-1].replace(")", "").strip()
+                st.session_state.selected_ticker = code_from_display
+                st.session_state.scraped_data = None
+                st.rerun()
 
             if submitted and selected_display:
                 code_from_display = selected_display.split("(")[-1].replace(")", "").strip()
