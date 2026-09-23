@@ -640,8 +640,9 @@ with chart_cols[0]:
         }
     ))
     fig_gauge.update_layout(
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
+        template="plotly_dark",
+        paper_bgcolor='#1E293B',
+        plot_bgcolor='#0F172A',
         font={'color': '#F8FAFC'},
         title=dict(
             text="<b>현재주가 위치 vs S-RIM 밸류에이션 밴드</b><br><span style='font-size:0.82em; color:#94A3B8;'>🟢 매수권장가 | 🟡 기준적정가 | 🔴 매도목표가</span>",
@@ -688,8 +689,9 @@ with chart_cols[1]:
         textfont=dict(color='#F8FAFC', size=12)
     ))
     fig_bar.update_layout(
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
+        template="plotly_dark",
+        paper_bgcolor='#1E293B',
+        plot_bgcolor='#0F172A',
         font={'color': '#F8FAFC'},
         title=dict(
             text="<b>S-RIM 적정주가 vs 증권사 목표주가 비교</b><br><span style='font-size:0.82em; color:#94A3B8;'>최근 3개월 발표 증권사 리포트 기준</span>",
@@ -763,14 +765,15 @@ if highlights_ann is not None and not highlights_ann.empty:
             ))
 
         fig_trend.update_layout(
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
+            template="plotly_dark",
+            paper_bgcolor='#1E293B',
+            plot_bgcolor='#0F172A',
             font={'color': '#F8FAFC'},
             title=dict(text="<b>연도별 ROE 추이 vs 요구수익률 및 순이익 (회색: 실적, 하늘색: 컨센서스)</b>", font=dict(color='#F8FAFC', size=16)),
             xaxis=dict(title="연도", gridcolor='#334155', tickfont=dict(color='#94A3B8')),
             yaxis=dict(title="ROE (%)", side='left', gridcolor='#334155', tickfont=dict(color='#94A3B8')),
             yaxis2=dict(title="지배주주순이익 (억원)", side='right', overlaying='y', showgrid=False, tickformat=',d', tickfont=dict(color='#94A3B8')),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#F8FAFC')),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color='#F8FAFC'), bgcolor="rgba(30, 41, 59, 0.85)", bordercolor="#334155", borderwidth=1),
             height=380,
             margin=dict(l=20, r=20, t=55, b=20)
         )
