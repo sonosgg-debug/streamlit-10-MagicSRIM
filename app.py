@@ -218,6 +218,51 @@ st.markdown("""
         visibility: visible !important;
         font-size: 1.35rem !important;
     }
+
+    /* 다운로드 버튼 공통 통일 스타일 */
+    div[data-testid="stDownloadButton"] > button,
+    .stDownloadButton > button {
+        background-color: #334155 !important;
+        color: #f8fafc !important;
+        border: 1px solid #475569 !important;
+        border-radius: 6px !important;
+        font-size: 0.875rem !important;
+        font-weight: 500 !important;
+        height: 38px !important;
+        min-height: 38px !important;
+        max-height: 38px !important;
+        line-height: 36px !important;
+        padding: 0 16px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        transition: all 0.2s ease-in-out !important;
+        box-sizing: border-box !important;
+    }
+    div[data-testid="stDownloadButton"] > button:hover,
+    .stDownloadButton > button:hover {
+        background-color: #475569 !important;
+        border-color: #38bdf8 !important;
+        color: #ffffff !important;
+        box-shadow: 0 0 10px rgba(56, 189, 248, 0.25) !important;
+    }
+    div[data-testid="stDownloadButton"] > button:active,
+    .stDownloadButton > button:active {
+        background-color: #1e293b !important;
+        border-color: #0284c7 !important;
+    }
+    div[data-testid="stDownloadButton"] > button p,
+    div[data-testid="stDownloadButton"] > button span,
+    .stDownloadButton > button p,
+    .stDownloadButton > button span {
+        font-size: 0.875rem !important;
+        font-weight: 500 !important;
+        color: inherit !important;
+        line-height: inherit !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -479,7 +524,7 @@ st.markdown("<div style='text-align: center; color: #64748B; font-size: 0.82rem;
 st.markdown("<hr style='border: 0; height: 1px; background-color: #334155; margin-bottom: 22px;'>", unsafe_allow_html=True)
 
 # 1. 헤더 영역
-col_header_title, col_header_btn = st.columns([3, 1])
+col_header_title, col_header_btn = st.columns([8, 2], vertical_alignment="bottom")
 with col_header_title:
     st.markdown(f"<div class='main-title'>{data.get('company_name')} <span style='font-size:1.35rem; color:#94A3B8;'>({data.get('ticker')})</span></div>", unsafe_allow_html=True)
     consol_tag = "연결재무제표" if data.get('is_consolidated') else "별도재무제표"
