@@ -608,7 +608,12 @@ with col_header_btn:
         st.caption(f"엑셀 생성 대기 중: {e}")
 
 # 2. 기업 시세 & 밸류에이션 요약 카드
-st.markdown("#### 📌 기업 시세 및 가치평가 요약")
+st.markdown(
+    "<div style='font-size: 1.20rem; font-weight: 700; color: #8AB4F8; margin: 20px 0 10px 0; display: flex; align-items: center; gap: 8px;'>"
+    "<span>📌</span> 기업 시세 및 가치평가 요약"
+    "</div>",
+    unsafe_allow_html=True
+)
 m_cols = st.columns(6)
 with m_cols[0]:
     p_change_str = info.get('price_change', '')
@@ -640,7 +645,12 @@ st.markdown("<br>", unsafe_allow_html=True)
 chosen_eval = std_eval if model_engine == "standard" else multi_eval
 engine_label = "사경인 정통 S-RIM (표준 모델)" if model_engine == "standard" else "향후 10년 예측 적용 (응용 모델)"
 
-st.markdown(f"### 🎯 S-RIM 적정주가 평가 결과 <span style='font-size:1rem; color:#94A3B8;'>[{engine_label}]</span>", unsafe_allow_html=True)
+st.markdown(
+    f"<div style='font-size: 1.20rem; font-weight: 700; color: #8AB4F8; margin: 20px 0 10px 0; display: flex; align-items: center; gap: 8px;'>"
+    f"<span>🎯</span> S-RIM 적정주가 평가 결과 <span style='font-size: 0.90rem; font-weight: 500; color: #94A3B8; margin-left: 4px;'>[{engine_label}]</span>"
+    f"</div>",
+    unsafe_allow_html=True
+)
 
 if chosen_eval['is_aligned']:
     st.success("🟢 **정배열 상태 (ROE > 요구수익률)**: 기업이 주주 요구수익률 이상의 초과이익(Excess Earnings)을 창출하고 있어 주당 가치가 지속 성장합니다.")
@@ -708,7 +718,12 @@ if model_engine == "compare":
 # 4. 시각화 섹션 (밝고 화사한 Plotly 인터랙티브 차트)
 # -------------------------------------------------------------
 st.markdown("<br>", unsafe_allow_html=True)
-st.markdown("#### 📊 주가 밴드 및 가치평가 비교 차트")
+st.markdown(
+    "<div style='font-size: 1.20rem; font-weight: 700; color: #8AB4F8; margin: 20px 0 10px 0; display: flex; align-items: center; gap: 8px;'>"
+    "<span>📊</span> 주가 밴드 및 가치평가 비교 차트"
+    "</div>",
+    unsafe_allow_html=True
+)
 
 chart_cols = st.columns([1, 1])
 
@@ -819,7 +834,12 @@ with chart_cols[1]:
 # -------------------------------------------------------------
 if highlights_ann is not None and not highlights_ann.empty:
     st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("#### 📈 ROE 및 실적 추이 (과거 5년 실적 + 향후 3년 컨센서스)")
+    st.markdown(
+        "<div style='font-size: 1.20rem; font-weight: 700; color: #8AB4F8; margin: 20px 0 10px 0; display: flex; align-items: center; gap: 8px;'>"
+        "<span>📈</span> ROE 및 실적 추이 (과거 5년 실적 + 향후 3년 컨센서스)"
+        "</div>",
+        unsafe_allow_html=True
+    )
     
     roe_series = None
     for idx in highlights_ann.index:
@@ -890,7 +910,12 @@ if highlights_ann is not None and not highlights_ann.empty:
 # 6. 세부 분석 탭 섹션 (Tabs)
 # -------------------------------------------------------------
 st.markdown("<br>", unsafe_allow_html=True)
-st.markdown("#### 🔍 세부 분석 데이터 및 시뮬레이션")
+st.markdown(
+    "<div style='font-size: 1.20rem; font-weight: 700; color: #8AB4F8; margin: 20px 0 10px 0; display: flex; align-items: center; gap: 8px;'>"
+    "<span>🔍</span> 세부 분석 데이터 및 시뮬레이션"
+    "</div>",
+    unsafe_allow_html=True
+)
 
 tabs = st.tabs([
     "📊 민감도 분석 매트릭스",
@@ -901,7 +926,12 @@ tabs = st.tabs([
 
 # Tab 1: 민감도 분석 매트릭스
 with tabs[0]:
-    st.markdown("##### 🎯 할인율(요구수익률) × 추정 ROE 변동에 따른 적정주가 민감도 표")
+    st.markdown(
+        "<div style='font-size: 1.00rem; font-weight: 600; color: #E2E8F0; margin: 14px 0 6px 0; display: flex; align-items: center; gap: 6px;'>"
+        "<span>🎯</span> 할인율(요구수익률) × 추정 ROE 변동에 따른 적정주가 민감도 표"
+        "</div>",
+        unsafe_allow_html=True
+    )
     st.caption("초과이익 10% 감소(기준 적정주가) 시나리오 기반. 현재주가 대비 안전마진이 확보된 셀(적정가 > 현재가)은 녹색으로 강조됩니다.")
     
     sens_df = generate_sensitivity_matrix(base_equity_val, net_shares, current_price, applied_roe, final_req_return)
@@ -941,7 +971,12 @@ with tabs[2]:
         count_3m = cons_info.get('analyst_count_3m', 0)
         avg_3m = cons_info.get('target_price_avg')
         avg_str = f"{avg_3m:,.0f}원" if avg_3m else "3개월 내 리포트 없음"
-        st.markdown(f"##### 📋 증권사 리포트 투자의견 및 목표주가 (최근 3개월 반영: **{count_3m}건**, 3개월 평균 목표가: **{avg_str}**)")
+        st.markdown(
+            f"<div style='font-size: 1.00rem; font-weight: 600; color: #E2E8F0; margin: 14px 0 6px 0; display: flex; align-items: center; gap: 6px;'>"
+            f"<span>📋</span> 증권사 리포트 투자의견 및 목표주가 (최근 3개월 반영: <b style='color:#38BDF8;'>{count_3m}건</b>, 3개월 평균 목표가: <b style='color:#34D399;'>{avg_str}</b>)"
+            f"</div>",
+            unsafe_allow_html=True
+        )
         
         rep_rows = []
         for r in reports:
@@ -970,7 +1005,12 @@ with tabs[2]:
 
 # Tab 4: 10개년 잔여이익(RI) 시뮬레이션 표
 with tabs[3]:
-    st.markdown("##### 📈 엑셀 'RIM계산' 시트 연도별 잔여이익(RI) 추정 스케줄 (10% 감쇠 기준)")
+    st.markdown(
+        "<div style='font-size: 1.00rem; font-weight: 600; color: #E2E8F0; margin: 14px 0 6px 0; display: flex; align-items: center; gap: 6px;'>"
+        "<span>📈</span> 엑셀 'RIM계산' 시트 연도별 잔여이익(RI) 추정 스케줄 (10% 감쇠 기준)"
+        "</div>",
+        unsafe_allow_html=True
+    )
     st.caption("매년 창출되는 초과이익(Excess Earnings)을 사내 유보하여 자본을 증대시키고, 각 연도 초과이익을 현재가치로 할인한 표입니다.")
     
     if multi_eval and multi_eval.get('schedule'):
