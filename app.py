@@ -4,13 +4,32 @@ Magic S-RIM 가치평가 및 미래 ROE 예측 웹 대시보드
 Streamlit 기반 인터랙티브 분석 플랫폼 (다크 모드 최적화 & 32 FinancialChart 종목 선택 방식 탑재)
 """
 
+import socket
+socket.setdefaulttimeout(5.0)
+
 import os
-from datetime import datetime, date
+from datetime import datetime, date, timezone, timedelta
+
+KST = timezone(timedelta(hours=9))
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
+
+STANDARD_CHART_THEME = {
+    'paper_bgcolor': '#1E293B',    # Tailwind Slate-800 (외곽 카드 배경)
+    'plot_bgcolor': '#0F172A',     # Tailwind Slate-900 (내부 딥 블랙 플롯)
+    'text_main': '#F8FAFC',        # 타이틀/헤더 텍스트 (순백색)
+    'text_body': '#E2E8F0',        # 본문 및 축 라벨 (부드러운 화이트)
+    'text_muted': '#CBD5E1',       # 축 눈금 수치 텍스트 (Slate-300)
+    'grid_color': '#334155',       # 그리드 격자선 (Slate-700)
+    'border_color': '#475569',     # 축 기준선 (Slate-600)
+    'legend_bg': 'rgba(30, 41, 59, 0.85)',
+    'legend_border': '#334155',
+    'hover_bg': 'rgba(15, 23, 42, 0.9)',
+    'hover_border': '#334155'
+}
 
 # 코어 모듈 임포트
 from fnguide_scraper import scrape_company_data, get_krx_ticker_list
@@ -40,6 +59,11 @@ st.markdown("""
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
     html, body, [class*="css"] {
         font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+
+    /* Streamlit 고정 상단 헤더 배경 투명화 */
+    header[data-testid="stHeader"] {
+        background: transparent !important;
     }
 
     /* 메인 콘텐츠 상단 여백 규격화 */
@@ -339,7 +363,7 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
-    st.subheader("🔍 종목 선택")
+    st.markdown("<div style='font-size: 0.95rem; font-weight: 700; color: #e2e8f0; margin-bottom: 6px;'>🔍 종목 선택</div>", unsafe_allow_html=True)
 
     tickers_df = load_stock_tickers()
     if not tickers_df.empty:
@@ -571,7 +595,7 @@ with col_header_title:
 with col_header_btn:
     try:
         excel_bytes = generate_srim_excel(data, form_path="000_Form.xlsx")
-        filename = f"{data.get('ticker')}_SRIM_{datetime.now().strftime('%Y%m%d')}.xlsx"
+        filename = f"{data.get('ticker')}_SRIM_{datetime.now(KST).strftime('%Y%m%d')}.xlsx"
         st.download_button(
             label="📥 엑셀 파일 다운로드",
             data=excel_bytes,
@@ -724,8 +748,8 @@ with chart_cols[0]:
     ))
     fig_gauge.update_layout(
         template="plotly_dark",
-        paper_bgcolor='#1E293B',
-        plot_bgcolor='#0F172A',
+        paper_bgcolor=STANDARD_CHART_THEME['paper_bgcolor'],
+        plot_bgcolor=STANDARD_CHART_THEME['plot_bgcolor'],
         font={'color': '#F8FAFC'},
         title=dict(
             text="<b>현재주가 위치 vs S-RIM 밸류에이션 밴드</b><br><span style='font-size:0.82em; color:#94A3B8;'>🟢 매수권장가 | 🟡 기준적정가 | 🔴 매도목표가</span>",
@@ -773,8 +797,8 @@ with chart_cols[1]:
     ))
     fig_bar.update_layout(
         template="plotly_dark",
-        paper_bgcolor='#1E293B',
-        plot_bgcolor='#0F172A',
+        paper_bgcolor=STANDARD_CHART_THEME['paper_bgcolor'],
+        plot_bgcolor=STANDARD_CHART_THEME['plot_bgcolor'],
         font={'color': '#F8FAFC'},
         title=dict(
             text="<b>S-RIM 적정주가 vs 증권사 목표주가 비교</b><br><span style='font-size:0.82em; color:#94A3B8;'>최근 3개월 발표 증권사 리포트 기준</span>",
@@ -849,8 +873,8 @@ if highlights_ann is not None and not highlights_ann.empty:
 
         fig_trend.update_layout(
             template="plotly_dark",
-            paper_bgcolor='#1E293B',
-            plot_bgcolor='#0F172A',
+            paper_bgcolor=STANDARD_CHART_THEME['paper_bgcolor'],
+            plot_bgcolor=STANDARD_CHART_THEME['plot_bgcolor'],
             font={'color': '#F8FAFC'},
             title=dict(text="<b>연도별 ROE 추이 vs 요구수익률 및 순이익 (회색: 실적, 하늘색: 컨센서스)</b>", font=dict(color='#F8FAFC', size=16)),
             xaxis=dict(title="연도", gridcolor='#334155', tickfont=dict(color='#94A3B8')),

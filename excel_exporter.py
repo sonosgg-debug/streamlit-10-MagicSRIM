@@ -9,7 +9,9 @@ import re
 import io
 import zipfile
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+KST = timezone(timedelta(hours=9))
 import openpyxl
 from openpyxl.utils import get_column_letter
 
@@ -150,7 +152,7 @@ def generate_srim_excel(scraped_data, form_path="000_Form.xlsx"):
     info = scraped_data.get('info', {})
     ticker = scraped_data.get('ticker', '')
     company_name = scraped_data.get('company_name', '')
-    inquiry_date = scraped_data.get('inquiry_date', datetime.now().strftime("%Y/%m/%d"))
+    inquiry_date = scraped_data.get('inquiry_date', datetime.now(KST).strftime("%Y/%m/%d"))
 
     # 1. 기본 정보 기록
     write_val(ws_data, 3, 2, company_name)

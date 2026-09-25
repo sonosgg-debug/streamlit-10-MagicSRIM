@@ -4,7 +4,9 @@ S-RIM(잔여이익모델) 가치평가 및 미래 ROE 추정, 민감도 분석�
 """
 
 import math
-from datetime import datetime, date
+from datetime import datetime, date, timezone, timedelta
+
+KST = timezone(timedelta(hours=9))
 import pandas as pd
 import numpy as np
 
@@ -260,7 +262,7 @@ def calculate_srim_multiperiod(base_equity, net_shares, roe, req_return, base_da
         return None
 
     if today is None:
-        today = date.today()
+        today = datetime.now(KST).date()
         
     diff_days = 0
     if base_date_str:

@@ -3,15 +3,20 @@ fnguide_scraper.py
 fnGuide(https://wcomp.fnguide.com/) 및 KRX 데이터를 수집하여 구조화된 데이터로 반환하는 모듈
 """
 
+import socket
+socket.setdefaulttimeout(5.0)
+
 import os
 import re
 import json
 import urllib.parse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from io import StringIO
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
+
+KST = timezone(timedelta(hours=9))
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -302,7 +307,7 @@ def scrape_company_data(ticker):
     result = {
         'ticker': ticker,
         'company_name': '',
-        'inquiry_date': datetime.now().strftime("%Y/%m/%d"),
+        'inquiry_date': datetime.now(KST).strftime("%Y/%m/%d"),
         'info': {},
         'highlights_annual': None,
         'highlights_quarter': None,
@@ -506,7 +511,7 @@ def scrape_company_data(ticker):
                 rows = tbody.find_all('tr') if tbody else []
                 reports = []
                 target_prices_3m = []
-                now = datetime.now()
+                now = datetime.now(KST)
                 cutoff_date = now - timedelta(days=92)  # 최근 3개월 기준일
 
                 for row in rows:
@@ -606,3 +611,36 @@ if __name__ == "__main__":
         print("Annual Highlights Indices (first 10):", list(data['highlights_annual'].index[:10]))
         if 'ROE' in data['highlights_annual'].index:
             print("\nROE:", data['highlights_annual'].loc['ROE'].to_dict())
+
+def get_latest_expected_trading_day(target_date: str = None) -> str:
+    """
+    가장 최근 거래 완료된 실제 영업일 YYYY-MM-DD 반환.
+    - target_date가 전달된 경우: 해당 날짜 기준 (또는 직전 영업일)
+    - target_date가 없는 경우: KST 기준 15:45 이전이거나 오늘이 주말/새벽이면 직전 마감 거래일 반환
+    """
+    from datetime import datetime, timezone, timedelta
+    now_kst = datetime.now(timezone(timedelta(hours=9)))
+    if target_date:
+        try:
+            clean_date = str(target_date).replace('-', '')
+            dt = datetime.strptime(clean_date, "%Y%m%d").replace(tzinfo=timezone(timedelta(hours=9)))
+        except Exception:
+            dt = now_kst
+    else:
+        dt = now_kst
+
+    # 평일 15:45 이후에만 당일 종가 확정
+    if dt.weekday() < 5 and (dt.hour > 15 or (dt.hour == 15 and dt.minute >= 45)):
+        return dt.strftime("%Y-%m-%d")
+
+    # 장전, 새벽, 주말: 직전 마감 거래일 산출
+    if dt.weekday() == 0:    # 월요일 장전 -> 지난주 금요일 (3일 전)
+        days_back = 3
+    elif dt.weekday() == 6:  # 일요일 -> 지난주 금요일 (2일 전)
+        days_back = 2
+    elif dt.weekday() == 5:  # 토요일 -> 지난주 금요일 (1일 전)
+        days_back = 1
+    else:                    # 화~금 장전/새벽 -> 전일 (1일 전)
+        days_back = 1
+
+    return (dt - timedelta(days=days_back)).strftime("%Y-%m-%d")
