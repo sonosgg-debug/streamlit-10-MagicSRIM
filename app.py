@@ -141,6 +141,18 @@ st.markdown("""
         border-radius: 6px;
     }
 
+    /* 사이드바 스타일링 */
+    section[data-testid="stSidebar"], [data-testid="stSidebar"] {
+        background-color: #1e293b !important;
+        border-right: 1px solid #334155 !important;
+    }
+    section[data-testid="stSidebar"] h1,
+    section[data-testid="stSidebar"] h2,
+    section[data-testid="stSidebar"] h3 {
+        color: #f8fafc !important;
+        -webkit-text-fill-color: #f8fafc !important;
+    }
+
     /* =========================================================
        사이드바 접기(<<) 및 펼치기(>>) 버튼 항상 표시 및 시인성/대비 강화
        ========================================================= */
