@@ -4,9 +4,6 @@ Magic S-RIM 가치평가 및 미래 ROE 예측 웹 대시보드
 Streamlit 기반 인터랙티브 분석 플랫폼 (다크 모드 최적화 & 32 FinancialChart 종목 선택 방식 탑재)
 """
 
-import socket
-socket.setdefaulttimeout(5.0)
-
 import os
 from datetime import datetime, date, timezone, timedelta
 

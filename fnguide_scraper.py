@@ -3,9 +3,6 @@ fnguide_scraper.py
 fnGuide(https://wcomp.fnguide.com/) 및 KRX 데이터를 수집하여 구조화된 데이터로 반환하는 모듈
 """
 
-import socket
-socket.setdefaulttimeout(5.0)
-
 import os
 import re
 import json
