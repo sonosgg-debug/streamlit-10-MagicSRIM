@@ -4,6 +4,23 @@ Magic S-RIM 가치평가 및 미래 ROE 예측 웹 대시보드
 Streamlit 기반 인터랙티브 분석 플랫폼 (다크 모드 최적화 & 32 FinancialChart 종목 선택 방식 탑재)
 """
 
+import sys
+# Python 3.12+ 및 Streamlit Cloud 환경에서 pykrx의 pkg_resources 모듈 임포트 에러 방지용 shim
+try:
+    import pkg_resources
+except Exception:
+    try:
+        import setuptools.command
+        import pkg_resources
+    except Exception:
+        import types
+        pkg_mock = types.ModuleType("pkg_resources")
+        pkg_mock.resource_filename = lambda *args, **kwargs: ""
+        pkg_mock.resource_string = lambda *args, **kwargs: b""
+        pkg_mock.Requirement = type("Requirement", (), {"parse": lambda s: s})
+        pkg_mock.get_distribution = lambda *args, **kwargs: type("Dist", (), {"version": "1.0.0"})()
+        sys.modules["pkg_resources"] = pkg_mock
+
 import os
 from datetime import datetime, date, timezone, timedelta
 
